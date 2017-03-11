@@ -29,20 +29,8 @@ var devBuildDir = path.resolve(entryPath, '__build'); // 开发环境下 静态�
      "react-dom": "ReactDOM"
  * }
  */
+// Don't follow/bundle these modules, but request them at runtime from the environment
 var externals = {
-};
-// babel 参数
-var babelQuery = {
-  cacheDirectory: true,
-  presets: [
-    require.resolve('babel-preset-es2015'),
-    require.resolve('babel-preset-stage-0')
-  ],
-  plugins: [
-    require.resolve('babel-plugin-add-module-exports'),
-    require.resolve('babel-plugin-typecheck'),
-    require.resolve('babel-plugin-transform-decorators-legacy')
-  ]
 };
 var config = {
   entry: [
@@ -55,18 +43,30 @@ var config = {
   },
   externals: debug ? {} : externals,
   module: {
-    loaders: [
+    rules: [
       {
         test: /\.js$/,
-        loader: 'babel-loader',
         exclude: /(node_modules|bower_components)/,
-        query: babelQuery
+        use: [{
+          loader: 'babel-loader',
+          query: {
+            cacheDirectory: true,
+            presets: [
+              require.resolve('babel-preset-es2015'),
+              require.resolve('babel-preset-stage-0')
+            ],
+            plugins: [
+              require.resolve('babel-plugin-add-module-exports'),
+              require.resolve('babel-plugin-typecheck'),
+              require.resolve('babel-plugin-transform-decorators-legacy')
+            ]
+          }
+        }]
       }
     ]
   },
   resolve: {
-    // 填在这里的表示可以进行自动补全后缀
-    extensions: ['', '.js', '.jsx', '.json']
+    extensions: ['.js', '.jsx', '.json']
   },
   devServer: {
     hot: true,
@@ -85,14 +85,29 @@ if (debug) {
   // 开发环境
   var cssLoader = {
     test: /\.css$/,
-    loaders: ['style', 'css']
+    use: [
+      'style-loader', 'css-loader'
+    ]
   };
   var lessLoader = {
     test: /\.less$/,
-    loaders: ['style', 'css', 'less']
+    use: [
+      'style-loader',
+      'css-loader',
+      'less-loader'
+    ]
   };
-  config.module.loaders.push(cssLoader);
-  config.module.loaders.push(lessLoader);
+  var sassLoader = {
+    test: /\.scss$/,
+    use: [
+      'style-loader',
+      'css-loader',
+      'scss-loader'
+    ]
+  };
+  config.module.rules.push(cssLoader);
+  config.module.rules.push(lessLoader);
+  config.module.rules.push(sassLoader);
   config.plugins = config.plugins.concat([
     // 生成HTML
     new HtmlwebpackPlugin({
@@ -100,25 +115,32 @@ if (debug) {
       filename: 'index.html',
       inject: 'body'
     }),
-    new webpack.optimize.OccurenceOrderPlugin(),
-    new webpack.HotModuleReplacementPlugin(),
-    new webpack.NoErrorsPlugin()
+    new webpack.HotModuleReplacementPlugin()
   ]);
 } else {
   // 发布环境
   var cssLoader = {
     test: /\.css$/,
-    loader: ExtractTextPlugin.extract("style-loader", "css-loader")
+    use: ExtractTextPlugin.extract({
+      fallback: 'style-loader',
+      use: ['css-loader']
+    })
   };
   var lessLoader = {
     test: /\.less$/,
-    loader: ExtractTextPlugin.extract("style-loader", "css-loader!less-loader")
+    use: ExtractTextPlugin.extract({
+      fallback: 'style-loader',
+      use: ['css-loader', 'less-loader']
+    })
   };
-  config.module.loaders.push(cssLoader);
-  config.module.loaders.push(lessLoader);
+  config.module.rules.push(cssLoader);
+  config.module.rules.push(lessLoader);
   // 分离出的css代码 在这里被注入到 css/[name].css文件里
   // @see https://github.com/webpack/extract-text-webpack-plugin
-  config.plugins.push(new ExtractTextPlugin("css/index.css", {allChunks: false}));
+  config.plugins.push(new ExtractTextPlugin({
+    filename: 'css/index.css',
+    allChunks: false
+  }));
   // 压缩
   config.plugins.push(new UglifyJsPlugin({
     minimize: true
