@@ -1,47 +1,56 @@
-var path = require('path');
-var fs = require('fs');
-var webpack = require('webpack');
-var devServerPort = require('./package.json').port.webpack;
+const path = require('path');
+const fs = require('fs');
+const webpack = require('webpack');
+const devServerPort = require('./package.json').port.webpack;
+const del = require('del');
+const glob = require('glob');
+
+// 当前环境
+const debug = process.env.NODE_ENV !== 'production';
 
 // 删除build目录
-var del = require('del');
 del(['./build/*']);
 
+
+// 获得项目入口文件
+function getEntry(debug) {
+  let files = glob.sync('./src/scripts/*.js');
+  let fileEnteries = {};
+  files.forEach(file => {
+    let entry = path.basename(file, '.js');
+    fileEnteries[entry] = [file];
+    if (debug) {
+      fileEnteries[entry].unshift("webpack/hot/dev-server", "webpack-hot-middleware/client?reload=true");
+    }
+  });
+  return fileEnteries;
+}
 // webpack插件列表
-var HtmlwebpackPlugin = require('html-webpack-plugin'); // 生成一个html 加载 打包好后的脚本
-var ExtractTextPlugin = require('extract-text-webpack-plugin');
-var UglifyJsPlugin = webpack.optimize.UglifyJsPlugin;
+const HtmlwebpackPlugin = require('html-webpack-plugin'); // 生成一个html 加载 打包好后的脚本
+const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const UglifyJsPlugin = webpack.optimize.UglifyJsPlugin;
 
 
 // 资源路径列表
-var entryPath = process.cwd();
-var sourceEntry = path.resolve(entryPath, 'src/scripts/index.js'); // 项目入口文件
-var buildDir = path.resolve(entryPath, 'build');// 打包目标地址
-var debug = process.env.NODE_ENV !== 'production';
+const entryPath = process.cwd();
+const sourceEntry = path.resolve(entryPath, 'src/scripts/index.js'); // 项目入口文件
+const buildDir = path.resolve(entryPath, 'build');// 打包目标地址
 
 // 开发配置
-var devBuildDir = path.resolve(entryPath, '__build'); // 开发环境下 静态资源目录
-// 第三方资源
-// example
-/**
- * var externals = {
- *   "react": 'React',
-     "react-dom": "ReactDOM"
- * }
- */
-// Don't follow/bundle these modules, but request them at runtime from the environment
-var externals = {
-};
-var config = {
-  entry: [
-    sourceEntry
-  ],
+const devBuildDir = path.resolve(entryPath, '__build'); // 开发环境下 静态资源目录
+const entries = Object.assign({}, getEntry(debug), {
+  vendor: ['jquery']
+});
+let chunks = Object.keys(entries);
+let config = {
+  entry: entries,
   output: {
     path: debug ? devBuildDir : buildDir,
-    filename: debug ? 'index.js' : 'scripts/index.js',
-    publicPath: debug ? '/' : './' // 各种资源生成的链接[如 打包的图片]
+    filename: '[name]/index.js',
+    publicPath: '/'
   },
-  externals: debug ? {} : externals,
+  // Don't follow/bundle these modules, but request them at runtime from the environment
+  externals: {},
   module: {
     rules: [
       {
@@ -62,6 +71,19 @@ var config = {
             ]
           }
         }]
+      }, {
+        test: /\.html$/,
+        use: [{
+          loader: 'html-loader',
+          options: {
+            minimize: true
+          }
+        }]
+      }, {
+        test: /\.ejs$/,
+        use: [{
+          loader: 'ejs-loader'
+        }]
       }
     ]
   },
@@ -77,7 +99,18 @@ var config = {
     contentBase: devBuildDir,
     port: devServerPort
   },
-  plugins: [],
+  plugins: [new HtmlwebpackPlugin({
+    template: path.resolve(entryPath, 'src/catalog.ejs'),
+    filename: `index.html`
+  }),
+  new webpack.optimize.CommonsChunkPlugin({
+    name: 'vendor', // Specify the common bundle's name.
+    filename: '[name].js',
+    // 提取使用3次以上的模块，将其打包到vendor里
+    minChunks: 3
+  })
+  ],
+  devtool: debug ? 'source-map' : false
 };
 
 
@@ -102,19 +135,13 @@ if (debug) {
     use: [
       'style-loader',
       'css-loader',
-      'scss-loader'
+      'sass-loader'
     ]
   };
   config.module.rules.push(cssLoader);
   config.module.rules.push(lessLoader);
   config.module.rules.push(sassLoader);
   config.plugins = config.plugins.concat([
-    // 生成HTML
-    new HtmlwebpackPlugin({
-      template: path.resolve(entryPath, 'src/index.html'),
-      filename: 'index.html',
-      inject: 'body'
-    }),
     new webpack.HotModuleReplacementPlugin()
   ]);
 } else {
@@ -133,12 +160,20 @@ if (debug) {
       use: ['css-loader', 'less-loader']
     })
   };
+  var sassLoader = {
+    test: /\.scss$/,
+    use: ExtractTextPlugin.extract({
+      fallback: 'style-loader',
+      use: ['css-loader', 'sass-loader']
+    })
+  };
   config.module.rules.push(cssLoader);
   config.module.rules.push(lessLoader);
+  config.module.rules.push(sassLoader);
   // 分离出的css代码 在这里被注入到 css/[name].css文件里
   // @see https://github.com/webpack/extract-text-webpack-plugin
   config.plugins.push(new ExtractTextPlugin({
-    filename: 'css/index.css',
+    filename: '[name]/index.css',
     allChunks: false
   }));
   // 压缩
@@ -146,5 +181,19 @@ if (debug) {
     minimize: true
   }));
 }
-
+// 为每一个入口文件生成HTML
+chunks.forEach(entry => {
+  if (entry == 'vendor') {
+    return;
+  }
+  let cfg = {
+    title: entry,
+    template: path.resolve(entryPath, 'src/template.ejs'),
+    filename: `${entry}/index.html`,
+    inject: 'body',
+    hash: false,
+    chunks: ['vendor', entry]
+  }
+  config.plugins.push(new HtmlwebpackPlugin(cfg));
+});
 module.exports = config;
