@@ -4,10 +4,10 @@ projectName=$1;
 
 target=src/scripts/${projectName}.js
 
-touch src/css/animate/${projectName}.scss
+touch src/css/${projectName}.scss
 touch $target
-touch src/scripts/${projectName}.html
+touch src/html/${projectName}.html
 
-echo "import html from './${projectName}.html';" > $target
-echo "import '../css/animate/${projectName}.scss';" >> $target
+echo "import html from '../html/${projectName}.html';" > $target
+echo "import '../css/${projectName}.scss';" >> $target
 echo "\$('#root').append(html);\n" >> $target

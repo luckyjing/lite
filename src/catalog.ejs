@@ -212,6 +212,41 @@ svg {
 <p style="text-align:center;color:#5E9CCC;font-size:18px;">
 欢迎使用lite脚手架<br/>scr/scripts目录下的所有js文件都将会被当做入口文件。<br/>如您在此目录下有一个叫做main.js的文件，你可以通过访问/main来访问到你的项目地址。
 </p>
+<p style="margin-top:20px;color:#5E9CCC;font-size:18px;">您当前的项目有：</p>
+<style>
+ul{
+  width:100%;
+}
+.projects li{
+  width:33%;
+  display:inline-block;
+  height:50px;
+  background:#DBEDF6;
+  text-align:center;
+  line-height:50px;
+  cursor:pointer;
+  transition: all 0.17s ease;
+}
+.projects li:hover {
+  background:#DFEFF6;
+}
+a{
+  text-decoration:none;
+  color:#999;
+  font-size:24px;  
+  display:inline-block;
+  width:100%;
+  height:100%;
+}
+a:hover{
+  color:#999;
+}
+</style>
+<ul class="projects">
+<%htmlWebpackPlugin.options.projects.forEach(function(project){%>
+  <li> <a href="/<%= project  %>"><%=project%></a>  </li>
+<%})%>
+</ul>
 </body>
 
 </html>

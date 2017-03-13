@@ -25,6 +25,10 @@ function getEntry(debug) {
   });
   return fileEnteries;
 }
+function getEntryArray() {
+  let files = glob.sync('./src/scripts/*.js').map(file => path.basename(file, '.js'));
+  return files;
+}
 // webpack插件列表
 const HtmlwebpackPlugin = require('html-webpack-plugin'); // 生成一个html 加载 打包好后的脚本
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
@@ -101,7 +105,8 @@ let config = {
   },
   plugins: [new HtmlwebpackPlugin({
     template: path.resolve(entryPath, 'src/catalog.ejs'),
-    filename: `index.html`
+    filename: `index.html`,
+    projects: getEntryArray()
   }),
   new webpack.optimize.CommonsChunkPlugin({
     name: 'vendor', // Specify the common bundle's name.
