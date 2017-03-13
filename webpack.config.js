@@ -104,6 +104,7 @@ let config = {
     port: devServerPort
   },
   plugins: [new HtmlwebpackPlugin({
+    inject: false,
     template: path.resolve(entryPath, 'src/catalog.ejs'),
     filename: `index.html`,
     projects: getEntryArray()
