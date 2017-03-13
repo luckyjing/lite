@@ -11,6 +11,7 @@
 - `webpack`支持打包`ES6`,`Less`,`Sass`，开发服务器默认监听在`3005`端口
 - 集合`mock`服务，默认监听在`8005`端口
 - 支持多入口文件
+- 支持将项目全部构建为静态资源，方便地放到服务器上。
 
 ## 开始使用
 
@@ -78,6 +79,8 @@ import html from '../html/demo.html';
 import '../css/demo.scss';
 $('#root').append(html);
 ```
+
+**重新执行**`npm run dev`，访问`http://localhost:3005/demo`
 
 你也可以使用目录下的`create.sh`和`del.sh`
 ```sh
